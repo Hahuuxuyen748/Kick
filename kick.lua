@@ -1,56 +1,41 @@
-
 local Players = game:GetService("Players")
+local ChatService = game:GetService("Chat")
+
+local Detected = {} -- Lưu danh sách người chơi bị phát hiện
 
 Players.PlayerAdded:Connect(function(player)
+    local actionCount = 0
+    local lastActionTime = tick()
+    
     player.CharacterAdded:Connect(function(character)
-        -- Giả sử phát hiện hack, bạn sẽ trigger thông báo dưới đây
-        local suspicious = false -- Thay bằng điều kiện kiểm tra hack
-        
-        -- Ví dụ kiểm tra tốc độ
-        local humanoid = character:WaitForChild("Humanoid")
-        if humanoid.WalkSpeed > 16 then -- WalkSpeed mặc định là 16
-            suspicious = true
-        end
-
-        if suspicious then
-            -- Tạo GUI cảnh báo
-            local gui = Instance.new("ScreenGui")
-            gui.Name = "WarningGUI"
-
-            local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(0.5, 0, 0.4, 0)
-            frame.Position = UDim2.new(0.25, 0, 0.3, 0)
-            frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            frame.Parent = gui
-
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, 0, 0.7, 0)
-            label.Position = UDim2.new(0, 0, 0, 0)
-            label.Text = "Cảnh báo: Đừng hack nữa!\nBạn sẽ bị đá ra khỏi game trong:"
-            label.TextColor3 = Color3.new(1, 0, 0)
-            label.TextScaled = true
-            label.BackgroundTransparency = 1
-            label.Parent = frame
-
-            local countdownLabel = Instance.new("TextLabel")
-            countdownLabel.Size = UDim2.new(1, 0, 0.3, 0)
-            countdownLabel.Position = UDim2.new(0, 0, 0.7, 0)
-            countdownLabel.Text = "5"
-            countdownLabel.TextColor3 = Color3.new(1, 1, 0)
-            countdownLabel.TextScaled = true
-            countdownLabel.BackgroundTransparency = 1
-            countdownLabel.Parent = frame
-
-            gui.Parent = player:WaitForChild("PlayerGui")
-
-            -- Đếm ngược 5 giây
-            for i = 5, 1, -1 do
-                countdownLabel.Text = tostring(i)
-                wait(1)
+        character.HumanoidRootPart.Touched:Connect(function()
+            local currentTime = tick()
+            actionCount = actionCount + 1
+            
+            if currentTime - lastActionTime < 0.1 then
+                actionCount = actionCount + 1
+            else
+                actionCount = 0
             end
-
-            -- Đá người chơi ra khỏi game
-            player:Kick("Đừng hack nữa! Bạn đã bị đá khỏi game.")
-        end
+            
+            lastActionTime = currentTime
+            
+            if actionCount > 20 then
+                if not Detected[player.Name] then
+                    Detected[player.Name] = true
+                    -- Gửi tin nhắn cảnh báo
+                    ChatService:Chat(player.Character.Head, "Cảnh báo! Bạn bị phát hiện dùng auto. Dừng lại ngay!", Enum.ChatColor.Red)
+                    
+                    -- Đếm ngược 5 giây trước khi kick
+                    for i = 5, 1, -1 do
+                        ChatService:Chat(player.Character.Head, "Bạn sẽ bị đá khỏi game sau " .. i .. " giây!", Enum.ChatColor.Red)
+                        task.wait(1)
+                    end
+                    
+                    -- Kick người chơi
+                    player:Kick("Bạn đã bị phát hiện sử dụng auto. Không gian lận!")
+                end
+            end
+        end)
     end)
 end)
